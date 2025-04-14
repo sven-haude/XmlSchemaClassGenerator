@@ -257,6 +257,12 @@ public class Generator
         get { return _configuration.CollectionSettersMode; }
         set { _configuration.CollectionSettersMode = value; }
     }
+    
+    public bool AutoInitializeComplexTypes
+    {
+        get { return _configuration.AutoInitializeComplexTypes; }
+        set { _configuration.AutoInitializeComplexTypes = value; }
+    }
 
     public string TextValuePropertyName
     {

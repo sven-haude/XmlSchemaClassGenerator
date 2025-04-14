@@ -183,7 +183,13 @@ public class GeneratorConfiguration
     /// Determines the kind of collection accessor modifiers to emit and controls baking collection fields initialization
     /// </summary>
     public CollectionSettersMode CollectionSettersMode { get; set; }
-
+    
+    /// <summary>
+    /// Determines whether complex types should be automatically initialized.
+    /// When enabled, instances of complex types will be automatically created when an object is instantiated.
+    /// </summary>
+    public bool AutoInitializeComplexTypes { get; set; }
+    
     /// <summary>
     /// The name of the property that will contain the text value of an XML element
     /// </summary>

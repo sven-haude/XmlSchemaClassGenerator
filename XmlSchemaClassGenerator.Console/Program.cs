@@ -70,6 +70,7 @@ static class Program
         var allowDtdParse = false;
         NamingScheme? namingScheme = null;
         var forceUriScheme = "none";
+        var autoInitializeComplexTypes = false;
 
 
         var options = new OptionSet {
@@ -269,7 +270,8 @@ with or without backing field initialization for collections
             SeparateNamespaceHierarchy = separateNamespaceHierarchy,
             SerializeEmptyCollections = serializeEmptyCollections,
             AllowDtdParse = allowDtdParse,
-            ForceUriScheme = forceUriScheme
+            ForceUriScheme = forceUriScheme,
+            AutoInitializeComplexTypes = autoInitializeComplexTypes,
         };
 
         if (namingScheme != null)
