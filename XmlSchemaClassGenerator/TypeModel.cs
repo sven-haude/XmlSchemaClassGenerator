@@ -760,7 +760,8 @@ public class PropertyModel(GeneratorConfiguration configuration, string name, Ty
         if (IsRequired && Configuration.DataAnnotationMode != DataAnnotationMode.None)
         {
             var requiredAttribute = new CodeAttributeDeclaration(CodeUtilities.CreateTypeReference(Attributes.Required, Configuration));
-            var noEmptyStrings = propertyType is SimpleModel simpleModel && simpleModel.Restrictions.Any(r => r is MinLengthRestrictionModel m && m.Value > 0);
+            var noEmptyStrings = propertyType is SimpleModel simpleModel 
+                && simpleModel.Restrictions.Any(r => r is MinLengthRestrictionModel m && m.Value > 0);
             var allowEmptyStringsArgument = new CodeAttributeArgument("AllowEmptyStrings", new CodePrimitiveExpression(!noEmptyStrings));
             requiredAttribute.Arguments.Add(allowEmptyStringsArgument);
             member.CustomAttributes.Add(requiredAttribute);
@@ -942,50 +943,7 @@ public class PropertyModel(GeneratorConfiguration configuration, string name, Ty
 
         var attributes = GetAttributes(isArray).ToArray();
         member.CustomAttributes.AddRange(attributes);
-        
-        // ################################################################################################################
-        // NEU: Komplexe Typen im Konstruktor initialisieren (nur bei aktivierter Option)
-        if (Configuration.AutoInitializeComplexTypes 
-            && !isEnumerable && !isArray                   // nur für Einzelwerte, keine Collections/Arrays
-            && propertyType is ClassModel classType        // Typ ist ein generiertes Klassenmodell
-            && !classType.IsAbstract)                      // abstrakte Klassen nicht instanziieren
-        {
-            // Sicherstellen, dass ein Konstruktor existiert
-            var constructor = typeDeclaration.Members
-                                .OfType<CodeConstructor>()
-                                .FirstOrDefault();
-            if (constructor == null)
-            {
-                constructor = new CodeConstructor 
-                { 
-                    Attributes = MemberAttributes.Public | MemberAttributes.Final 
-                };
-                // Konstruktor-Kommentar (Englisch/Deutsch)
-                var docs = new DocumentationModel[] {
-                    new() { Language = English, Text = 
-                             $@"Initializes a new instance of the <see cref=""{typeDeclaration.Name}"" /> class." },
-                    new() { Language = German,  Text = 
-                             $@"Initialisiert eine neue Instanz der <see cref=""{typeDeclaration.Name}"" /> Klasse." }
-                };
-                constructor.Comments.AddRange(GetComments(docs).ToArray());
-                typeDeclaration.Members.Add(constructor);
-            }
-            // Ziel-Referenz ermitteln: falls ein privates Feld (Backing-Field) existiert, dieses verwenden, sonst Property
-            CodeExpression targetRef = backingField != null 
-                ? new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), backingField.Name) 
-                : new CodePropertyReferenceExpression(new CodeThisReferenceExpression(), Name);
-            // Initialisierungs-Ausdruck: new <PropertyType>()
-            var initTypeRef = propertyType.GetReferenceFor(
-                                  OwningType.Namespace, collection: false, forInit: true, attribute: IsAttribute);
-            var initExpr = new CodeObjectCreateExpression(initTypeRef);
-            // Im Konstruktor: this._prop = new PropType();
-            constructor.Statements.Add(new CodeAssignStatement(targetRef, initExpr));
-        }
-        // ################################################################################################################
-        
-        
-        
-        
+
         // initialize List<>
         if (isEnumerable && (Configuration.CollectionSettersMode != CollectionSettersMode.PublicWithoutConstructorInitialization)
             && (Configuration.CollectionSettersMode != CollectionSettersMode.InitWithoutConstructorInitialization))
@@ -1064,9 +1022,8 @@ public class PropertyModel(GeneratorConfiguration configuration, string name, Ty
             if (IsAny)
             {
                 var anyAttribute = AttributeDecl<XmlAnyAttributeAttribute>();
-                // if (Order != null)
-                //     anyAttribute.Arguments.Add(new(nameof(Order), new CodePrimitiveExpression(Order.Value)));
-                
+                if (Order != null)
+                    anyAttribute.Arguments.Add(new(nameof(Order), new CodePrimitiveExpression(Order.Value)));
                 attributes.Add(anyAttribute);
             }
             else
@@ -1106,26 +1063,6 @@ public class PropertyModel(GeneratorConfiguration configuration, string name, Ty
                 var attribute = AttributeDecl<XmlElementAttribute>(new CodeAttributeArgument(new CodePrimitiveExpression(XmlSchemaName.Name)));
                 if (Order != null)
                     attribute.Arguments.Add(new(nameof(Order), new CodePrimitiveExpression(Order.Value)));
-                
-
-                // if (!(Type is SimpleModel))
-                // {
-                //
-                //     if (Type.Namespace != null && !string.IsNullOrEmpty(Type.Namespace.Name))
-                //     {
-                //         string fullName = Type.Namespace.Name + "." + Type.Name;
-                //
-                //         var typeReference = new CodeTypeReference(fullName, Configuration.CodeTypeReferenceOptions);
-                //         attribute.Arguments.Add(
-                //             new CodeAttributeArgument(
-                //                 nameof(XmlElementAttribute.Type),
-                //                 new CodeTypeOfExpression(typeReference)
-                //             )
-                //         );
-                //     }
-                // }
-
-
                 attributes.Add(attribute);
             }
         }
@@ -1441,7 +1378,7 @@ public class GeneratorModel
 
     protected const string English = "en";
     protected const string German = "de";
-    
+
     protected GeneratorModel(GeneratorConfiguration configuration) => Configuration = configuration;
 
     public GeneratorConfiguration Configuration { get; }
