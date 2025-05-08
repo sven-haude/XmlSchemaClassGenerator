@@ -1,5 +1,7 @@
 ﻿using System;
 using System.CodeDom;
+using XmlSchemaClassGenerator;
+using XmlSchemaClassGenerator.Model;
 
 namespace XmlSchemaClassGenerator;
 

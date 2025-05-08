@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace XmlSchemaClassGenerator;
+﻿namespace XmlSchemaClassGenerator;
 
 /// <summary>
 /// Determines the kind collection accessor modifiers to emit and controls baking collection fields initialization

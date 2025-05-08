@@ -17,6 +17,7 @@ using Ganss.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Xml.XMLGen;
+using XmlSchemaClassGenerator;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -453,6 +454,59 @@ public class XmlTests(ITestOutputHelper output)
             Assert.True((bool)propertyInfo.GetValue(myClassInstance));
         }
     }
+    
+    // TODO: Finalisieren 
+    
+    [Theory, TestPriority(1)]
+    [MemberData(nameof(TestSimpleData))]
+    [UseCulture("en-US")]
+    public void TestMemberInitWithinTheConstructor(CodeTypeReferenceOptions referenceMode, NamingScheme namingScheme, Type collectionType)
+    {
+        var name = $"MemberInitWithinTheConstructor";
+        Compiler.Generate(name, "xsd/simple/choice.xsd", new Generator
+        {
+            GenerateNullables = true,
+            IntegerDataType = typeof(int),
+            DataAnnotationMode = DataAnnotationMode.All,
+            GenerateDesignerCategoryAttribute = false,
+            GenerateComplexTypesForCollections = true,
+            EntityFramework = false,
+            GenerateInterfaces = true,
+            NamespacePrefix = "Choice",
+            GenerateDescriptionAttribute = true,
+            CodeTypeReferenceOptions = referenceMode,
+            NetCoreSpecificCode = true,
+            NamingScheme = namingScheme,
+            CollectionType = collectionType,
+            CollectionSettersMode = CollectionSettersMode.Public
+        });
+        
+        var assembly = Compiler.GetAssembly(name);
+
+        var o = output;
+        
+        Assert.NotNull(assembly);
+        var myClassType = assembly.GetType("Choice.PersonType");
+        Assert.NotNull(myClassType);
+        
+    
+        
+        // var iListType = typeof(Collection<>);
+        // var collectionPropertyInfos = myClassType.GetProperties().Where(p => p.PropertyType.IsGenericType && iListType.IsAssignableFrom(p.PropertyType.GetGenericTypeDefinition())).OrderBy(p => p.Name).ToList();
+        // var publicCollectionPropertyInfos = collectionPropertyInfos.Where(p => p.SetMethod.IsPublic).OrderBy(p => p.Name).ToList();
+        // Assert.NotEmpty(collectionPropertyInfos);
+        // Assert.Equal(collectionPropertyInfos, publicCollectionPropertyInfos);
+        // var requiredCustomModifiers = collectionPropertyInfos.Select(p => p.SetMethod.ReturnParameter.GetRequiredCustomModifiers()).ToList();
+        // Assert.Equal(collectionPropertyInfos.Count, requiredCustomModifiers.Count);
+        // Assert.All(requiredCustomModifiers, m => Assert.Contains(typeof(System.Runtime.CompilerServices.IsExternalInit), m));
+        // var myClassInstance = Activator.CreateInstance(myClassType);
+        // foreach (var collectionPropertyInfo in publicCollectionPropertyInfos)
+        // {
+        //     Assert.Null(collectionPropertyInfo.GetValue(myClassInstance));
+        // }
+    }
+
+    
 
     public static TheoryData<CodeTypeReferenceOptions, NamingScheme, Type> TestSimpleData() {
         var theoryData = new TheoryData<CodeTypeReferenceOptions, NamingScheme, Type>();
@@ -2820,6 +2874,54 @@ namespace Test
 }}
 ", csharp);
     }
+    
+    
+    [Fact]
+    public void TestChoiceItem()
+    {
+        var xsd =
+            @"<?xml version=""1.0"" encoding=""UTF-8""?>
+    <xs:schema xmlns:xs=""http://www.w3.org/2001/XMLSchema"">
+
+    <!-- Wurzelelement -->
+    <xs:element name=""Person"" type=""PersonType""/>
+
+    <!-- Komplexer Typ mit Name und Wahl zwischen Telefon oder E-Mail -->
+    <xs:complexType name=""PersonType"">
+        <xs:sequence>
+            <xs:element name=""Vorname"" type=""xs:string""/>
+            <xs:element name=""Nachname"" type=""xs:string""/>
+            <xs:choice>
+                <xs:element name=""Telefon"" type=""xs:string""/>
+                <xs:element name=""Email""   type=""xs:string""/>
+            </xs:choice>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>";
+        
+        var generator = new Generator
+        {
+            NamespaceProvider = new NamespaceProvider
+            {
+                GenerateNamespace = key => "Test",
+            },
+            IntegerDataType = typeof(int),
+            GenerateNullables = true,
+            CollectionType = typeof(System.Array),
+            CollectionSettersMode = CollectionSettersMode.Public,
+            UseArrayItemAttribute = false
+        };
+        var contents = ConvertXml(nameof(TestChoiceItem), [xsd], generator).ToArray();
+        var assembly = Compiler.Compile(nameof(TestChoiceItem), contents);
+        var applicationType = assembly.GetType("TestGenerationNamespace.TApplication");
+        Assert.NotNull(applicationType);
+        var optionList = applicationType.GetProperty("OptionList");
+        Assert.Equal("TestGenerationNamespace.TOptionList", optionList.PropertyType.FullName);
+    }
+    
+    
+    
 
     [Fact]
     public void TestArrayItemAttribute()

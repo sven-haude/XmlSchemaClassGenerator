@@ -10,6 +10,7 @@ using System.Linq;
 using Xunit;
 using Ganss.IO;
 using System.Collections.Concurrent;
+using XmlSchemaClassGenerator;
 
 namespace XmlSchemaClassGenerator.Tests;
 

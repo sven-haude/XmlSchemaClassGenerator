@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        xmlns="test_generation_namespace/common.xsd"        
+        targetNamespace="test_generation_namespace/common.xsd">
+
+    <!-- Wurzelelement -->
+    <xs:element name="Person" type="PersonType"/>
+
+    <!-- Komplexer Typ mit Name und Wahl zwischen Telefon oder E-Mail -->
+    <xs:complexType name="PersonType">
+        <xs:sequence>
+            <xs:element name="Vorname" type="xs:string"/>
+            <xs:element name="Nachname" type="xs:string"/>
+            <xs:choice>
+                <xs:element name="Telefon" type="xs:string"/>
+                <xs:element name="Email"   type="xs:string"/>
+            </xs:choice>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>

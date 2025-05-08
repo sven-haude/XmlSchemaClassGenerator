@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using XmlSchemaClassGenerator;
+using XmlSchemaClassGenerator.Model;
 
 namespace XmlSchemaClassGenerator;
 
@@ -127,6 +129,10 @@ public class GeneratorConfiguration
     /// <summary>
     /// Generate the Serializable attribute?
     /// </summary>
+    ///
+
+    public bool GenerateChoiceValueProperty { get; set; }
+    
     public bool GenerateSerializableAttribute { get; set; }
     /// <summary>
     /// Generate the DebuggerStepThroughAttribute?

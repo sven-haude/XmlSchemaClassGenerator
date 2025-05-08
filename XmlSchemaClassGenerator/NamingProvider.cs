@@ -1,4 +1,6 @@
-﻿namespace XmlSchemaClassGenerator;
+﻿using XmlSchemaClassGenerator;
+
+namespace XmlSchemaClassGenerator;
 
 using System.Xml;
 using System.Xml.Linq;

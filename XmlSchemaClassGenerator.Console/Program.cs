@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Mono.Options;
 using Ganss.IO;
+using XmlSchemaClassGenerator;
 
 namespace XmlSchemaClassGenerator.Console;
 

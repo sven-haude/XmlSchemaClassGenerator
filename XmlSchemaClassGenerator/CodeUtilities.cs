@@ -9,6 +9,8 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Schema;
+using XmlSchemaClassGenerator;
+using XmlSchemaClassGenerator.Model;
 
 namespace XmlSchemaClassGenerator
 {

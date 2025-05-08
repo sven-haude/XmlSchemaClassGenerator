@@ -37,7 +37,7 @@ public sealed class XmlSchemaAttributeEx : IXmlSchemaNode
 
 public sealed class XmlSchemaElementEx : IXmlSchemaNode
 {
-    private XmlSchemaElementEx(XmlSchemaElement xs) => Real = xs;
+    internal XmlSchemaElementEx(XmlSchemaElement xs) => Real = xs;
 
     public XmlSchemaElement Real { get; }
 
