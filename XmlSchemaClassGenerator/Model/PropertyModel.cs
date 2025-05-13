@@ -14,6 +14,44 @@ namespace XmlSchemaClassGenerator.Model;
 [DebuggerDisplay("{Name}")]
 public class PropertyModel(GeneratorConfiguration configuration, string name, TypeModel type, TypeModel owningType) : GeneratorModel(configuration)
 {
+    
+    /// <summary>Für xs:choice – alle möglichen Elemente dieser Property.</summary>
+    public List<XmlElementMapping>? XmlElements { get; private set; }
+
+    /// <summary>Verknüpfte Enum-Property für XmlChoiceIdentifier.</summary>
+    public PropertyModel? ChoiceIdentifierProperty { get; private set; }
+
+    /// <summary>True ⇒ mit [XmlIgnore] kennzeichnen.</summary>
+    public bool IsIgnored { get; set; }
+
+    /// <summary>True ⇒ Array / List generieren.</summary>
+    // public bool IsCollection { get; set; }
+
+    /// <summary>True ⇒ zusätzlich [XmlAnyElement] generieren.</summary>
+    public bool HasAnyElement { get; set; }
+
+    // --------------------------------------------------------------------
+    // Helper für xs:choice
+    // --------------------------------------------------------------------
+    public void AddChoiceAlternative(string xmlName, TypeModel dataType,
+        string? xmlNs = null)
+    {
+        XmlElements ??= new List<XmlElementMapping>();
+        XmlElements.Add(new XmlElementMapping
+        {
+            ElementName      = xmlName,
+            ElementNamespace = xmlNs,
+            DataType         = dataType
+        });
+    }
+
+    public void SetXmlChoiceIdentifier(PropertyModel enumProperty)
+    {
+        ChoiceIdentifierProperty = enumProperty;
+    }
+
+    
+    
     private const string Value = nameof(Value);
     private const string Specified = nameof(Specified);
     private const string Namespace = nameof(XmlRootAttribute.Namespace);

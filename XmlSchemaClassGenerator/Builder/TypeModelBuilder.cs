@@ -16,6 +16,7 @@ namespace XmlSchemaClassGenerator.Builder
         private readonly NamespaceModel namespaceModel;
         private readonly List<DocumentationModel> docs;
         private readonly Uri source;
+        private int _choiceIndex;   // läuft für mehrere Choice-Blöcke hoch
 
         public TypeModelBuilder(
             ModelBuilder builder,
@@ -279,15 +280,47 @@ namespace XmlSchemaClassGenerator.Builder
             {
                 xmlParticle = complexType.Particle ?? complexType.ContentTypeParticle;
             }
+            
+            // ---------------------------------------------------------------------
+            // xs:choice speziell behandeln – sonst wie gehabt
+            // ---------------------------------------------------------------------
+            // 2.  Aufruf an der einen Stelle, wo du das Root-Particle hast
+            if (xmlParticle != null)
+                CollectChoices(xmlParticle, classModel);
+            // if (xmlParticle is XmlSchemaChoice rootChoice)
+            // {
+            //     AddChoiceProperty(classModel, rootChoice);
+            // }
+            else
+            {
+                var items = ParticleExtractor.GetElements(xmlParticle, complexType).ToList();
 
-            var items = ParticleExtractor.GetElements(xmlParticle, complexType).ToList();
+                if (configuration.GenerateInterfaces)
+                    AddInterfaces(classModel, items);
 
-            if (configuration.GenerateInterfaces)
-                AddInterfaces(classModel, items);
+                var particle   = new Particle(xmlParticle, xmlParticle?.Parent);
+                var properties = PropertyFactory.CreatePropertiesForElements(
+                    builder, configuration, source, classModel,
+                    particle, items);
+                classModel.Properties.AddRange(properties);
+            }
 
-            var particle = new Particle(xmlParticle, xmlParticle?.Parent);
-            var properties = PropertyFactory.CreatePropertiesForElements(builder, configuration, source, classModel, particle, items);
-            classModel.Properties.AddRange(properties);
+            
+            
+            
+            
+            // var items = ParticleExtractor.GetElements(xmlParticle, complexType).ToList();
+            //
+            // if (configuration.GenerateInterfaces) AddInterfaces(classModel, items);
+            //
+            // var particle = new Particle(xmlParticle, xmlParticle?.Parent);
+            // var properties = PropertyFactory.CreatePropertiesForElements(builder, configuration, source, classModel, particle, items);
+            // classModel.Properties.AddRange(properties);
+            
+            
+            
+            
+            
 
             XmlSchemaObjectCollection attributes = null;
             if (classModel.BaseClass != null)
@@ -382,6 +415,120 @@ namespace XmlSchemaClassGenerator.Builder
             }
             return namespaceModel;
         }
+        
+        // 1.  Neu: rekursive Suche nach Choice-Blöcken
+        private void CollectChoices(XmlSchemaParticle particle, ClassModel owningType)
+        {
+            if (particle is XmlSchemaChoice choice)
+                AddChoiceProperty(owningType, choice);
+
+            switch (particle)
+            {
+                case XmlSchemaSequence seq:
+                    foreach (var p in seq.Items.OfType<XmlSchemaParticle>())
+                        CollectChoices(p, owningType);
+                    break;
+                case XmlSchemaAll all:
+                    foreach (var p in all.Items.OfType<XmlSchemaParticle>())
+                        CollectChoices(p, owningType);
+                    break;
+
+                case XmlSchemaGroupRef groupRef:
+                    var group = builder.Groups[groupRef.RefName].First();
+                    CollectChoices(group.Particle, owningType);
+                    break;
+
+                // Weitere Fälle (XmlSchemaAny, etc.) nur bei Bedarf
+            }
+        }
+        
+        private void AddChoiceProperty(ClassModel owningTypeModel, XmlSchemaChoice choice)
+{
+    bool isMultiple = choice.MaxOccurs > 1 || choice.MaxOccursString == "unbounded";
+
+    // Property-Namen wie bei xsd.exe
+    int idx = _choiceIndex++;
+    string baseName = isMultiple ? "Items" : "Item";
+    string propertyName = idx == 0 ? baseName : $"{baseName}{idx}";
+
+    // ------------------------------------------------
+    //  Enum-Typ anlegen
+    // ------------------------------------------------
+    string enumTypeName = propertyName + "ChoiceType";
+    var enumModel = new ClassModel(configuration)
+    {
+        Name          = enumTypeName,
+        IsEnum        = true,
+        IsChoiceEnum  = true
+    };
+
+    // Sammle Element-Infos für Property und Enum
+    var elementMappings = new List<XmlElementMapping>();
+
+    foreach (var opt in choice.Items.OfType<XmlSchemaElement>())
+    {
+        string xmlName = !opt.RefName.IsEmpty ? opt.RefName.Name : opt.Name;
+        string xmlNs   = !opt.RefName.IsEmpty ? opt.RefName.Namespace : null;
+
+        // .NET-Typ für das Element erzeugen / holen
+        var clrType = builder.CreateTypeModel(opt.ElementSchemaType.QualifiedName,
+                                              opt.ElementSchemaType);
+
+        elementMappings.Add(new XmlElementMapping
+        {
+            ElementName      = xmlName,
+            ElementNamespace = xmlNs,
+            DataType         = clrType
+        });
+
+        // TODO: geht noch nicht. 
+        // Enum-Member anlegen (Name eindeutig machen)
+        string memberName = configuration.NamingProvider
+            .EnumMemberNameFromValue(enumTypeName, xmlName, (XmlSchemaEnumerationFacet)null);
+                            // .EnumMemberNameFromValue(enumTypeName, xmlName, xmlNs);
+        enumModel.EnumMembers.Add(new EnumMemberModel
+        {
+            Name     = memberName,
+            XmlValue = xmlName
+        });
+    }
+
+    owningTypeModel.NestedTypes.Add(enumModel);
+
+    // ------------------------------------------------
+    //  Enum-Property
+    // ------------------------------------------------
+    string enumPropName = propertyName + "ElementName";
+    var enumProperty = new PropertyModel( configuration, enumPropName, enumModel, owningTypeModel)
+    {
+        Name         = enumPropName,
+      //  DataType     = enumModel,
+        IsIgnored    = true,
+        IsCollection = isMultiple
+    };
+
+    // ------------------------------------------------
+    //  Haupt-Property (object / object[])
+    // ------------------------------------------------
+    var choiceProperty = new PropertyModel(configuration, propertyName, 
+        new SimpleModel(configuration) { ValueType = typeof(object) }, owningTypeModel)
+    {
+        Name         = propertyName,
+        //DataType     = new SimpleModel(configuration) { ValueType = typeof(object) },
+        IsCollection = isMultiple
+    };
+    foreach (var map in elementMappings)
+        choiceProperty.AddChoiceAlternative(map.ElementName, map.DataType, map.ElementNamespace);
+
+    // ChoiceIdentifier verknüpfen
+    choiceProperty.SetXmlChoiceIdentifier(enumProperty);
+
+    // ------------------------------------------------
+    //  Zur Klasse hinzufügen
+    // ------------------------------------------------
+    owningTypeModel.Properties.Add(choiceProperty);
+    owningTypeModel.Properties.Add(enumProperty);
+}
 
 
         private TypeModel CreateTypeModel(XmlSchemaSimpleType simpleType)
@@ -524,6 +671,8 @@ namespace XmlSchemaClassGenerator.Builder
                 builder.SetType(simpleType, qualifiedName, simpleModel);
             return simpleModel;
         }
+        
+        
         
         
 

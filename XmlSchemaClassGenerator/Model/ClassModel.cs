@@ -12,6 +12,20 @@ namespace XmlSchemaClassGenerator.Model;
 
 public class ClassModel(GeneratorConfiguration configuration) : ReferenceTypeModel(configuration)
 {
+    /// <summary>Verschachtelte Typen (z. B. Choice-Enums).</summary>
+    public List<ClassModel> NestedTypes { get; } = new ();
+
+    /// <summary>True, wenn dieses ClassModel eine Enum repräsentiert.</summary>
+    public bool IsEnum { get; set; }
+
+    /// <summary>True bei Choice-Enums, die nicht im XSD stehen (=> XmlType(IncludeInSchema=false)).</summary>
+    public bool IsChoiceEnum { get; set; }
+
+    /// <summary>Enum-Mitglieder, falls <see cref="IsEnum"/> == true.</summary>
+    public List<EnumMemberModel> EnumMembers { get; } = new ();
+    
+    
+    
     public override bool IsRedefined => DerivedTypes.Exists(d => d.XmlSchemaType?.Parent is XmlSchemaRedefine);
     public bool IsAbstract { get; set; }
     public bool IsMixed { get; set; }
