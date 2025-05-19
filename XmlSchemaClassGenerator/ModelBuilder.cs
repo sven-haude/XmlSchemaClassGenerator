@@ -945,6 +945,18 @@ internal class ModelBuilder
 
                     properties.AddRange(groupProperties);
                     break;
+                case XmlSchemaChoice choice when _configuration.GenerateChoiceItemProperty:
+                    var choiceProperty = CreateChoiceItemProperty(owningTypeModel, choice, order);
+                    if (choiceProperty != null)
+                    {
+                        property = choiceProperty;
+                        if (_configuration.EmitOrder)
+                        {
+                            property.Order = order + 1;
+                            order += 2; // enum + property
+                        }
+                    }
+                    break;
             }
 
             // Discard duplicate property names. This is most likely due to:
@@ -956,7 +968,11 @@ internal class ModelBuilder
                 property.Documentation.AddRange(itemDocs);
 
                 if (_configuration.EmitOrder)
-                    property.Order = order++;
+                {
+                    if (!property.Order.HasValue)
+                        property.Order = order;
+                    order++;
+                }
 
                 property.IsDeprecated = itemDocs.Exists(d => d.Text.StartsWith("DEPRECATED"));
 
@@ -986,6 +1002,51 @@ internal class ModelBuilder
             parent = parent.Parent;
         }
         return false;
+    }
+
+    private PropertyModel CreateChoiceItemProperty(TypeModel owningTypeModel, XmlSchemaChoice choice, int order)
+    {
+        if (owningTypeModel is not ClassModel classModel)
+            return null;
+
+        var enumName = owningTypeModel.Namespace?.GetUniqueTypeName($"{owningTypeModel.Name}ItemChoiceType") ?? "ItemChoiceType";
+        var enumModel = new EnumModel(_configuration)
+        {
+            Name = enumName,
+            Namespace = owningTypeModel.Namespace
+        };
+
+        foreach (var element in choice.Items.OfType<XmlSchemaElement>())
+        {
+            enumModel.Values.Add(new EnumValueModel
+            {
+                Name = _configuration.NamingProvider.EnumMemberNameFromValue(enumName, element.Name, null),
+                Value = element.Name
+            });
+        }
+
+        if (owningTypeModel.Namespace != null)
+            owningTypeModel.Namespace.Types[enumModel.Name] = enumModel;
+
+        var valueType = new SimpleModel(_configuration) { ValueType = typeof(object), UseDataTypeAttribute = false };
+        var choiceProperty = new PropertyModel(_configuration, "Item", valueType, owningTypeModel);
+        choiceProperty.SetFromParticles(new Particle(choice, choice.Parent), new Particle(choice, choice.Parent), false);
+        choiceProperty.Documentation.AddRange(GetDocumentation(choice));
+
+        var enumProperty = new PropertyModel(_configuration, "ItemElementName", enumModel, owningTypeModel)
+        {
+            IsRequired = true
+        };
+        enumProperty.Documentation.AddRange(GetDocumentation(choice));
+
+        if (_configuration.EmitOrder)
+        {
+            enumProperty.Order = order;
+            // choiceProperty order is set by caller
+        }
+
+        classModel.Properties.Add(enumProperty);
+        return choiceProperty;
     }
 
     private PropertyModel PropertyFromElement(TypeModel owningTypeModel, XmlSchemaElementEx element, Particle particle, Particle item, Substitute substitute,

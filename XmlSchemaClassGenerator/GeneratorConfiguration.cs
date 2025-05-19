@@ -302,6 +302,12 @@ public class GeneratorConfiguration
     public bool SeparateSubstitutes { get; set; } = false;
 
     /// <summary>
+    /// Generate choice handling similar to xsd.exe using an Item property and
+    /// a companion enumeration.
+    /// </summary>
+    public bool GenerateChoiceItemProperty { get; set; } = false;
+
+    /// <summary>
     /// Generates type names without namespace qualifiers for namespaces in using list
     /// </summary>
     public bool CompactTypeNames { get; set; }

@@ -29,13 +29,14 @@ from schema restrictions
 * Optional support for Entity Framework Code First (automatically generate key properties)
 * Optionally generate interfaces for groups and attribute groups
 * Optionally generate one file per class
+* Optional generation of xsd.exe style choice properties using `GenerateChoiceItemProperty`
 * Support for nullable reference types (NRTs) through [`AllowNullAttribute`](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.codeanalysis.allownullattribute) and [`MaybeNullAttribute`](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.codeanalysis.maybenullattribute)
 * Optionally generate a common specific type for union member types
 
 Unsupported:
 
 * Some restriction types
-* Recursive choices and choices whose elements have minOccurs > 0 or nillable="true" (see [below](#choice))
+* Recursive choices and choices whose elements have minOccurs > 0 or nillable="true" remain unsupported unless `GenerateChoiceItemProperty` is enabled (see [below](#choice))
 * Possible name clashes and invalid identifiers when names contain non-alphanumeric characters
 * Groups with maxOccurs > 0
 
@@ -212,7 +213,8 @@ var generator = new Generator
     OutputFolder = outputFolder,
     Log = s => Console.Out.WriteLine(s),
     GenerateNullables = true,
-    NamespaceProvider = new Dictionary<NamespaceKey, string> 
+    GenerateChoiceItemProperty = true,
+    NamespaceProvider = new Dictionary<NamespaceKey, string>
     { 
         { new NamespaceKey("http://wadl.dev.java.net/2009/02"), "Wadl" } 
     }
@@ -358,13 +360,9 @@ Choice Elements<a name="choice"></a>
 ------------------------------------
 
 The support for choice elements differs from that [provided by xsd.exe](http://msdn.microsoft.com/en-us/library/sa6z5baz).
-Xsd.exe generates a property called `Item` of type `object` and, if not all choices have a distinct type, 
-another enum property that selects the chosen element.
-Besides being non-typesafe and non-intuitive, this approach breaks apart if the choices have a more complicated structure (e.g. sequences),
-resulting in possibly schema-invalid XML.
-
-XmlSchemaClassGenerator currently simply pretends choices are sequences.
-This means you'll have to take care only to set a schema-valid combination of these properties to non-null values.
+By default XmlSchemaClassGenerator pretends choices are sequences.
+If you enable `GenerateChoiceItemProperty`, an `Item` property of type `object` and a
+companion enumeration property `ItemElementName` are generated similar to xsd.exe.
 
 Interfaces<a name="interfaces"></a>
 -----------------------------------
